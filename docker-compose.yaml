@@ -1,0 +1,89 @@
+version: '3.8' # Specifies the Docker Compose file format version.
+
+services:
+  # The main SSO (Single Sign-On) microservice for authentication and verification.
+  # This service builds and runs your Go application.
+  sso-service:
+    build:
+      context: . # Instructs Docker to build from the current directory (where Dockerfile is located).
+      dockerfile: Dockerfile # Specifies the Dockerfile to use for building the image.
+    container_name: sso-service-dev # A human-readable name for the container, useful for local development.
+    ports:
+      - "8080:8080" # Maps port 8080 on your host machine to port 8080 inside the container.
+                    # Ensure this matches the SERVER_PORT configured in your Go application.
+    environment:
+      # Environment variables passed into the sso-service container.
+      # These values are primarily loaded from your local .env file (which is in .gitignore).
+      APP_ENV: dev # Application environment (e.g., dev, stage, prod, local).
+      SERVER_PORT: 8080 # The port your Go application listens on inside the container.
+
+      # MySQL Database connection details.
+      # DB_HOST refers to the 'mysql' service name within this Docker Compose network.
+      DB_HOST: mysql
+      DB_PORT: 3306 # The internal port of the MySQL container.
+      DB_USER: ${DB_USER} # Fetched from your .env file.
+      DB_PASSWORD: ${DB_PASSWORD} # Fetched from your .env file.
+      DB_NAME: ${DB_NAME} # Fetched from your .env file.
+
+      # Redis Cache connection details.
+      # REDIS_HOST refers to the 'redis' service name within this Docker Compose network.
+      REDIS_HOST: redis
+      REDIS_PORT: 6379 # The internal port of the Redis container.
+      REDIS_PASSWORD: ${REDIS_PASSWORD} # Fetched from your .env file (optional password).
+      REDIS_DB: ${REDIS_DB} # Fetched from your .env file.
+
+      # Mindbox API integration configuration.
+      MINDBOX_URL: ${MINDBOX_URL} # Fetched from your .env file.
+      MINDBOX_OPERATION_PREFIX: ${MINDBOX_OPERATION_PREFIX} # Fetched from your .env file.
+      MINDBOX_IOS_ENDPOINT_ID: ${MINDBOX_IOS_ENDPOINT_ID} # Fetched from your .env file.
+      MINDBOX_IOS_AUTHORIZATION: ${MINDBOX_IOS_AUTHORIZATION} # Fetched from your .env file.
+      MINDBOX_ANDROID_ENDPOINT_ID: ${MINDBOX_ANDROID_ENDPOINT_ID} # Fetched from your .env file.
+      MINDBOX_ANDROID_AUTHORIZATION: ${MINDBOX_ANDROID_AUTHORIZATION} # Fetched from your .env file.
+      MINDBOX_WEB_ENDPOINT_ID: ${MINDBOX_WEB_ENDPOINT_ID} # Fetched from your .env file.
+      MINDBOX_WEB_AUTHORIZATION: ${MINDBOX_WEB_AUTHORIZATION} # Fetched from your .env file.
+
+      # TLS (Transport Layer Security) settings.
+      TLS_SKIP_VERIFY: ${TLS_SKIP_VERIFY} # Fetched from your .env file. Set to true for dev/testing.
+      HTTP_TIMEOUT: ${HTTP_TIMEOUT} # Fetched from your .env file.
+
+      # JWT (JSON Web Token) secret key for token generation and validation.
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY} # Fetched from your .env file.
+
+      # SMS Service credentials.
+      SMSC_LOGIN: ${SMSC_LOGIN} # Fetched from your .env file.
+      SMSC_PASSWORD: ${SMSC_PASSWORD} # Fetched from your .env file.
+    depends_on:
+      - mysql # Ensures the 'mysql' service starts before 'sso-service'.
+      - redis # Ensures the 'redis' service starts before 'sso-service'.
+
+  # MySQL database service for the SSO microservice.
+  mysql:
+    image: mysql:8.0 # Uses the official MySQL 8.0 Docker image.
+    container_name: sso-mysql-dev # Name for the MySQL container.
+    environment:
+      # MySQL specific environment variables, fetched from your .env file.
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME} # The database name that will be created.
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "3306:3306" # Maps port 3306 on your host to port 3306 inside the container.
+                    # You can change the host port (e.g., "3308:3306") if 3306 is occupied.
+    volumes:
+      - sso_mysql_data:/var/lib/mysql # Persists MySQL data on your host machine.
+
+  # Redis caching service for the SSO microservice.
+  redis:
+    image: redis:6-alpine # Uses a lightweight Alpine-based Redis image.
+    container_name: sso-redis-dev # Name for the Redis container.
+    command: redis-server --requirepass ${REDIS_PASSWORD} # Starts Redis, optionally with a password.
+    ports:
+      - "6379:6379" # Maps port 6379 on your host to port 6379 inside the container.
+                    # You can change the host port (e.g., "6381:6379") if 6379 is occupied.
+    volumes:
+      - sso_redis_data:/data # Persists Redis data on your host machine.
+
+# Docker volumes for persistent data storage.
+volumes:
+  sso_mysql_data: # Volume for MySQL data.
+  sso_redis_data: # Volume for Redis data.

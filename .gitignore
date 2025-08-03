@@ -1,0 +1,23 @@
+# Environment variables
+.env
+
+# IDE-specific files
+.idea/
+
+# CI/CD configurations
+.gitlab-ci.yml
+
+# Helm charts (if you decide not to include them)
+.helm/
+
+# Binaries and other generated files (у тебя уже есть, просто для полноты)
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+vendor/
+go.work
+/server_env
